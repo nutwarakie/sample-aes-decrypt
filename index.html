@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>AES Decrypt Demo</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+        }
+
+        textarea,
+        input {
+            width: 100%;
+            margin-bottom: 12px;
+            padding: 8px;
+        }
+
+        button {
+            padding: 10px 16px;
+            cursor: pointer;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h2>AES Decrypt</h2>
+
+    <label>Encrypted Value (Base64)</label>
+    <textarea id="encrypted" rows="4"></textarea>
+
+    <label>AES Key (Base64)</label>
+    <input id="aesKey" />
+
+    <button onclick="decrypt()">Decrypt</button>
+
+    <h3>Result</h3>
+    <pre id="result"></pre>
+
+    <script>
+        const base64ToUint8Array = (base64) =>
+            Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+
+        async function decrypt() {
+            try {
+                const encryptedBase64 = document.getElementById("encrypted").value;
+                const aesKeyBase64 = document.getElementById("aesKey").value;
+
+                if (!encryptedBase64 || !aesKeyBase64) {
+                    throw new Error("Missing input");
+                }
+
+                const encryptedBytes = base64ToUint8Array(encryptedBase64);
+                const keyBytes = base64ToUint8Array(aesKeyBase64);
+
+                // 🔑 import AES key
+                const cryptoKey = await crypto.subtle.importKey(
+                    "raw",
+                    keyBytes,
+                    "AES-GCM",
+                    false,
+                    ["decrypt"]
+                );
+
+                // 📦 split IV + ciphertext
+                const iv = encryptedBytes.slice(0, 12);
+                const cipherText = encryptedBytes.slice(12);
+
+                const decryptedBuffer = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv },
+                    cryptoKey,
+                    cipherText
+                );
+
+                const decryptedText = new TextDecoder().decode(decryptedBuffer);
+                document.getElementById("result").textContent = decryptedText;
+
+            } catch (err) {
+                document.getElementById("result").textContent =
+                    "❌ Decrypt failed: " + err.message;
+            }
+        }
+    </script>
+
+</body>
+
+</html>
