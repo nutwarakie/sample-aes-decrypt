@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>AES Decrypt Demo</title>
+    <title>AES Decrypt Demo (With IV)</title>
     <style>
         body {
             font-family: sans-serif;
@@ -34,13 +34,16 @@
 
 <body>
 
-    <h2>AES Decrypt</h2>
+    <h2>AES Decrypt (Separate IV)</h2>
 
     <label>Encrypted Value (Base64)</label>
     <textarea id="encrypted" rows="4"></textarea>
 
     <label>AES Key (Base64)</label>
     <input id="aesKey" />
+
+    <label>IV (Base64)</label>
+    <input id="iv" />
 
     <button onclick="decrypt()">Decrypt</button>
 
@@ -55,15 +58,20 @@
             try {
                 const encryptedBase64 = document.getElementById("encrypted").value;
                 const aesKeyBase64 = document.getElementById("aesKey").value;
+                const ivBase64 = document.getElementById("iv").value;
 
-                if (!encryptedBase64 || !aesKeyBase64) {
+                if (!encryptedBase64 || !aesKeyBase64 || !ivBase64) {
                     throw new Error("Missing input");
                 }
 
-                const encryptedBytes = base64ToUint8Array(encryptedBase64);
+                const cipherBytes = base64ToUint8Array(encryptedBase64);
                 const keyBytes = base64ToUint8Array(aesKeyBase64);
+                const ivBytes = base64ToUint8Array(ivBase64);
 
-                // 🔑 import AES key
+                if (ivBytes.length !== 12) {
+                    throw new Error("AES-GCM IV must be 12 bytes");
+                }
+
                 const cryptoKey = await crypto.subtle.importKey(
                     "raw",
                     keyBytes,
@@ -72,14 +80,13 @@
                     ["decrypt"]
                 );
 
-                // 📦 split IV + ciphertext
-                const iv = encryptedBytes.slice(0, 12);
-                const cipherText = encryptedBytes.slice(12);
-
                 const decryptedBuffer = await crypto.subtle.decrypt(
-                    { name: "AES-GCM", iv },
+                    {
+                        name: "AES-GCM",
+                        iv: ivBytes,
+                    },
                     cryptoKey,
-                    cipherText
+                    cipherBytes
                 );
 
                 const decryptedText = new TextDecoder().decode(decryptedBuffer);
